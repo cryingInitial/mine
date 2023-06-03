@@ -26,7 +26,7 @@ def conv1x1(in_planes, out_planes, stride=1):
     """1x1 convolution"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
-
+'''
 class MLPFFNNeck(nn.Module):
     def __init__(self, in_channels=512, out_channels=512):
         super().__init__()
@@ -68,6 +68,7 @@ class MLPFFNNeck(nn.Module):
         x = self.ln3(x)
         x = x + self.ffn(identity)
         return x
+'''
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -198,7 +199,7 @@ class ResNet(nn.Module):
         if len(replace_stride_with_dilation) != 3:
             raise ValueError("replace_stride_with_dilation should be None "
                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
-        self.neck = MLPFFNNeck(in_channels = 512, out_channels=512)
+        #self.neck = MLPFFNNeck(in_channels = 512, out_channels=512)
         self.groups = groups
         self.base_width = width_per_group
         self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
