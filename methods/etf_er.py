@@ -25,7 +25,6 @@ class ETF_ER(CLManagerBase):
         # 아래 것들 config 파일에 추가!
         # num class = 100, eval_class = 60 
         self.num_classes = kwargs["num_class"]
-        print("num_classes!!", self.num_classes)
         self.eval_classes = 0 #kwargs["num_eval_class"]
         self.cls_feature_length = 50
         self.feature_mean_dict = {}
@@ -33,23 +32,10 @@ class ETF_ER(CLManagerBase):
         self.stds_list = []
         self.criterion = DR_loss().to(self.device)
         self.compute_accuracy = Accuracy(topk=self.topk)
-        self.model = select_model(self.model_name, self.dataset, 1, pre_trained=True).to(self.device)
-        print("model")
-        print(self.model)
+        self.model = select_model(self.model_name, self.dataset, 1, pre_trained=False).to(self.device)
         self.optimizer = select_optimizer(self.opt_name, self.lr, self.model)
         self.scheduler = select_scheduler(self.sched_name, self.optimizer)
         self.etf_initialize()
-        # ETF 꼴로 fc를 load!
-        '''
-        copy_state_dict = copy.deepcopy(self.model.state_dict())
-        for key in self.model.state_dict.keys():
-            if key == 'fc.weight': # weight는 etf structure로
-                copy_state_dict[key] = self.etf_initialize()
-            elif key == 'fc.bias': # bias는 0으로 
-                copy_state_dict[key] = torch.zeros_like(self.model.state_dict[key])
-        self.model.load_state_dict(copy_state_dict)
-        '''
-        #self.model.fc = None
 
     def sample_inference(self, sample):
         self.model.eval()
@@ -69,7 +55,6 @@ class ETF_ER(CLManagerBase):
         self.feature_std_mean = np.clip(np.mean(stds) - 1/self.num_learned_class, 0, 1) * self.num_learned_class/(self.num_learned_class + 1)
         self.feature_std_mean_list.append(self.feature_std_mean)
         self.stds_list.append(np.mean(stds))
-        #print("stds", np.mean(stds), "self.feature_std_mean", self.feature_std_mean)
 
     def model_forward(self, x, y):
         #do_cutmix = self.cutmix and np.random.rand(1) < 0.5
@@ -89,22 +74,17 @@ class ETF_ER(CLManagerBase):
                 feature = self.pre_logits(feature)
                 loss = self.criterion(feature, target)
 
-        #self.total_flops += (len(y) * self.forward_flops)
-
         # accuracy calculation
         with torch.no_grad():
             cls_score = feature @ self.etf_vec
-            #acc, _ = self.compute_accuracy(cls_score[:, :self.eval_classes], y)
             acc, _ = self.compute_accuracy(cls_score[:, :len(self.memory.cls_list)], y)
             acc = acc.item()
-            #print(acc)
 
         return logit, loss, feature, acc
 
     def pre_logits(self, x):
         x = x / torch.norm(x, p=2, dim=1, keepdim=True)
         return x
-
 
     def online_train(self, iterations=1):
         total_loss, correct, num_data = 0.0, 0.0, 0.0
@@ -145,11 +125,12 @@ class ETF_ER(CLManagerBase):
         one_nc_nc: torch.Tensor = torch.mul(torch.ones(self.num_classes, self.num_classes), (1 / self.num_classes))
         self.etf_vec = torch.mul(torch.matmul(orth_vec, i_nc_nc - one_nc_nc),
                             math.sqrt(self.num_classes / (self.num_classes - 1))).to(self.device)
+        '''
         print("etf shape")
         print(self.etf_vec.shape)
         print("etf angle")
         print(self.get_angle(self.etf_vec[:,0],self.etf_vec[:,1]), self.get_angle(self.etf_vec[:,0],self.etf_vec[:,-1]))
-        #return self.etf_vec
+        '''
 
     def get_angle(self, a, b):
         inner_product = (a * b).sum(dim=0)
@@ -171,77 +152,6 @@ class ETF_ER(CLManagerBase):
     def update_memory(self, sample):
         self.reservoir_memory(sample)
 
-    '''
-    def add_new_class(self, class_name):
-        self.cls_dict[class_name] = len(self.exposed_classes)
-        self.exposed_classes.append(class_name)
-        self.num_learned_class = len(self.exposed_classes)
-        self.eval_classes += 1
-        print("eval_classes", self.eval_classes)
-    '''
-
-    '''
-    def add_new_class(self, class_name):
-        self.cls_dict[class_name] = len(self.cls_list)
-        self.cls_list.append(class_name)
-        self.cls_count.append(0)
-        self.cls_idx.append([])
-        self.class_usage_count = np.append(self.class_usage_count, 0.0)
-        print("added", class_name)
-        print("self.cls_dict", self.cls_dict)
-    '''
-
-    '''
-    def memory_future_step(self):
-        try:
-            sample = next(self.data_stream)
-        except:
-            return 1
-        if sample["klass"] not in self.memory.cls_list:
-            self.memory.add_new_class(sample["klass"])
-            self.dataloader.add_new_class(self.memory.cls_dict)
-        self.update_memory(sample)
-        self.temp_future_batch.append(sample)
-        self.future_num_updates += self.online_iter
-
-        if self.future_num_updates >= 1:
-            self.temp_future_batch = []
-            self.generate_waiting_batch(int(self.future_num_updates))
-            self.future_num_updates -= int(self.future_num_updates)
-        self.future_sample_num += 1
-        return 0
-    '''
-
-    '''
-    def add_new_class(self, class_name):
-        self.cls_dict[class_name] = len(self.exposed_classes)
-        self.exposed_classes.append(class_name)
-        self.num_learned_class = len(self.exposed_classes)
-        self.eval_classes += 1
-
-    def online_step(self, sample, sample_num, n_worker):
-        self.sample_num = sample_num
-        if sample['klass'] not in self.exposed_classes:
-            self.add_new_class(sample['klass'])
-            self.writer.add_scalar(f"train/add_new_class", 1, sample_num)
-        else:
-            self.writer.add_scalar(f"train/add_new_class", 0, sample_num)
-        
-        self.num_updates += self.online_iter
-        if self.num_updates >= 1:
-            train_loss, train_acc = self.online_train(iterations=int(self.num_updates))
-            self.report_training(sample_num, train_loss, train_acc)
-            self.num_updates -= int(self.num_updates)
-            self.update_schedule()
-    '''
-        
-
-    '''
-    def generate_waiting_batch(self, iterations):
-        for i in range(iterations):
-            self.waiting_batch.append(self.memory.retrieval(self.memory_batch_size))
-    '''
-
     def online_step(self, sample, sample_num, n_worker):
         self.sample_num = sample_num
         if sample['klass'] not in self.exposed_classes:
@@ -256,22 +166,18 @@ class ETF_ER(CLManagerBase):
                 self.num_updates -= int(self.num_updates)
             self.temp_batch = []
         
+        # save feature and etf-fc
         if self.sample_num % 100 == 0 and self.sample_num !=0:
-            fc_pickle_name = "etf_sigma10_num_" + str(self.sample_num) + "_iter" + str(self.online_iter) + "_fc.pickle"
-            feature_pickle_name = "etf_sigma10_num_" + str(self.sample_num) + "_iter" + str(self.online_iter) + "_feature.pickle"
-            class_pickle_name = "etf_sigma10_num_" + str(self.sample_num) + "_iter" + str(self.online_iter) + "_class.pickle"
-            print("feature_pickle_name", feature_pickle_name)
-            print("class_pickle_name", class_pickle_name)
-            print("fc_pickle_name", fc_pickle_name)
+            fc_pickle_name = "etf_sigma" + str(self.sigma) + "_num_" + str(self.sample_num) + "_iter" + str(self.online_iter) + "_fc.pickle"
+            feature_pickle_name = "etf_sigma" + str(self.sigma) + "_num_" + str(self.sample_num) + "_iter" + str(self.online_iter) + "_feature.pickle"
+            class_pickle_name = "etf_sigma" + str(self.sigma) + "_num_" + str(self.sample_num) + "_iter" + str(self.online_iter) + "_class.pickle"
+            pickle_name_feature_std_mean_list = "etf_sigma" + str(self.sigma) + "_num_" + str(self.online_iter) + "_feature_std.pickle"
+            pickle_name_stds_list = "etf_sigma" + str(self.sigma) + "_num_" + str(self.online_iter) + "_stds.pickle"
 
             self.save_features(feature_pickle_name, class_pickle_name)
 
-            pickle_name_feature_std_mean_list = "etf_sigma10_iter" + str(self.online_iter) + "_feature_std.pickle"
-            pickle_name_stds_list = "etf_sigma10_iter" + str(self.online_iter) + "_stds.pickle"
-
             with open(fc_pickle_name, 'wb') as f:
-                print("fc shape", self.etf_vec[:, :len(self.memory.cls_list)].T.shape)
-                pickle.dump(self.etf_vec[:, :self.eval_classes].T, f, pickle.HIGHEST_PROTOCOL)
+                pickle.dump(self.etf_vec[:, :len(self.memory.cls_list)].T, f, pickle.HIGHEST_PROTOCOL)
 
             with open(pickle_name_feature_std_mean_list, 'wb') as f:
                 pickle.dump(self.feature_std_mean_list, f, pickle.HIGHEST_PROTOCOL)
