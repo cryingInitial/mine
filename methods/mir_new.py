@@ -81,8 +81,8 @@ class MIR(ER):
             if stream_end:
                 break
         if not stream_end:
-            self.dataloader.load_batch(self.waiting_batch[0])
-            self.cand_loader.load_batch(self.waiting_batch[0][self.temp_batch_size:])
+            self.dataloader.load_batch(self.waiting_batch[0], self.memory.cls_dict)
+            self.cand_loader.load_batch(self.waiting_batch[0][self.temp_batch_size:], self.memory.cls_dict)
             del self.waiting_batch[0]
 
     def generate_waiting_batch(self, iterations):
@@ -134,8 +134,6 @@ class MIR(ER):
                         scores = post_loss - pre_loss
                     
                     
-                    self.total_flops += (3 * len(logit_pre)) / 10e9
-                    self.total_flops += (2 * len(x) * self.forward_flops)    
                 selected_samples = torch.argsort(scores, descending=True)[:self.memory_batch_size]
 
                 mem_x_cands = data["image"][self.temp_batch_size:]
@@ -170,6 +168,5 @@ class MIR(ER):
             total_loss += loss.item()
             correct += torch.sum(preds == y.unsqueeze(1)).item()
             num_data += y.size(0)
-            self.total_flops += (self.batch_size * (self.forward_flops + self.backward_flops))
             
         return total_loss / iterations, correct / num_data
