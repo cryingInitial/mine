@@ -77,11 +77,11 @@ class CLManagerBase:
         self.test_datalist = test_datalist
         self.cls_dict = {}
         self.total_samples = len(self.train_datalist)
-
+        
         self.train_transform, self.test_transform, self.cpu_transform, self.n_classes = get_transform(self.dataset, self.transforms, self.transform_on_gpu)
         self.cutmix = "cutmix" in kwargs["transforms"]
 
-        self.model = select_model(self.model_name, self.dataset, 1).to(self.device)
+        self.model = select_model(self.model_name, self.dataset, 1,).to(self.device)
         print("model")
         print(self.model)
         self.optimizer = select_optimizer(self.opt_name, self.lr, self.model)
@@ -91,6 +91,7 @@ class CLManagerBase:
         self.dataloader = MultiProcessLoader(self.n_worker, self.cls_dict, self.train_transform, self.data_dir, self.transform_on_gpu, self.cpu_transform, self.device, self.use_kornia, self.transform_on_worker)
         self.memory_dataloader = MultiProcessLoader(self.n_worker, self.cls_dict, self.train_transform, self.data_dir, self.transform_on_gpu, self.cpu_transform, self.device, self.use_kornia, self.transform_on_worker)
         self.memory = MemoryBase(self.memory_size)
+        
         self.memory_list = []
         self.temp_batch = []
         self.temp_future_batch = []
@@ -123,16 +124,17 @@ class CLManagerBase:
         self.total_samples = num_samples[self.dataset]
 
         self.waiting_batch = []
+        
         self.initialize_future()
 
         self.total_flops = 0.0
         self.writer = SummaryWriter(f'tensorboard/{self.dataset}/{self.note}/seed_{self.rnd_seed}')
 
-
     # Memory 새로 정의 (not MemoryBase)
     def initialize_future(self):
         self.data_stream = iter(self.train_datalist)
         self.dataloader = MultiProcessLoader(self.n_worker, self.cls_dict, self.train_transform, self.data_dir, self.transform_on_gpu, self.cpu_transform, self.device, self.use_kornia, self.transform_on_worker)
+        
         #self.memory = MemoryBase(self.memory_size)
         self.memory_list = []
         self.temp_batch = []
@@ -150,6 +152,7 @@ class CLManagerBase:
 
         self.waiting_batch = []
         # 미리 future step만큼의 batch를 load
+        
         for i in range(self.future_steps):
             self.load_batch()
 
@@ -157,6 +160,7 @@ class CLManagerBase:
         try:
             sample = next(self.data_stream)
         except:
+            # 더 이상 sample이 남아있지 않으면 종료함
             return 1
         if sample["klass"] not in self.memory.cls_list:
             self.memory.add_new_class(sample["klass"])

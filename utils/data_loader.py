@@ -18,6 +18,7 @@ from kornia import image_to_tensor, tensor_to_image
 from kornia.geometry.transform import resize
 from utils.augmentations import CustomRandomCrop, CustomRandomHorizontalFlip, DoubleCompose, DoubleTransform
 import torch.multiprocessing as multiprocessing
+from tqdm import tqdm
 
 from utils.augment import DataAugmentation, Preprocess, get_statistics
 
@@ -63,12 +64,10 @@ class MultiProcessLoader():
 
     def add_new_class(self, cls_dict):
         self.cls_dict = cls_dict
-
     def load_batch(self, batch, cls_dict):
         self.cls_dict = cls_dict
         for sample in batch:
             sample["label"] = self.cls_dict[sample["klass"]]
-            
         for i in range(self.n_workers):
             self.index_queues[i].put(batch[len(batch)*i//self.n_workers:len(batch)*(i+1)//self.n_workers])
 
@@ -77,18 +76,25 @@ class MultiProcessLoader():
         data = dict()
         images = []
         labels = []
+        # for twf
+        task_ids = []
         for i in range(self.n_workers):
             loaded_samples = self.result_queues[i].get(timeout=300.0)
             if loaded_samples is not None:
                 images.append(loaded_samples["image"])
                 labels.append(loaded_samples["label"])
+                if "task_id" in loaded_samples.keys():
+                    task_ids.append(loaded_samples["task_id"])
         if len(images) > 0:
             images = torch.cat(images)
             labels = torch.cat(labels)
+            if task_ids:
+                task_ids = torch.cat(task_ids)
             if self.transform_on_gpu and not self.transform_on_worker:
                 images = self.transform(images.to(self.device))
             data['image'] = images
             data['label'] = labels
+            data['task_id'] = task_ids
             return data
         else:
             return None
@@ -111,8 +117,8 @@ def get_custom_double_transform(transform):
         else:
             tfs.append(DoubleTransform(tf))
 
-def partial_distill_loss(model, net_partial_features: list, pret_partial_features: list,
-                         targets, device, teacher_forcing: list = None, extern_attention_maps: list = None):
+def partial_distill_loss(model, net_partial_features: list, pret_partial_features: list, targets,
+                         task_ids, device, teacher_forcing: list = None, extern_attention_maps: list = None):
 
     assert len(net_partial_features) == len(
         pret_partial_features), f"{len(net_partial_features)} - {len(pret_partial_features)}"
@@ -129,9 +135,7 @@ def partial_distill_loss(model, net_partial_features: list, pret_partial_feature
 
         adapter = getattr(
             model, f"adapter_{i+1}")
-
         pret_feat = pret_feat.detach()
-
         if teacher_forcing is None:
             curr_teacher_forcing = torch.zeros(
                 len(net_feat,)).bool().to(device)
@@ -141,8 +145,7 @@ def partial_distill_loss(model, net_partial_features: list, pret_partial_feature
             curr_teacher_forcing = teacher_forcing
             curr_ext_attention_map = torch.stack(
                 [b[i] for b in extern_attention_maps], dim=0).float()
-
-        adapt_loss, adapt_attention = adapter(net_feat, pret_feat, targets,
+        adapt_loss, adapt_attention = adapter(net_feat, pret_feat, targets, task_ids,
                                               teacher_forcing=curr_teacher_forcing, attention_map=curr_ext_attention_map)
 
         loss += adapt_loss
@@ -174,6 +177,7 @@ class ImageDataset(Dataset):
         self.data_dir = data_dir
         self.preload = preload
         self.device = device
+        print(f"Preload: {self.data_frame}")
         self.transform_on_gpu = transform_on_gpu
         if self.preload:
             mean, std, n_classes, inp_size, _ = get_statistics(dataset=self.dataset)
@@ -186,7 +190,8 @@ class ImageDataset(Dataset):
                     ])
                 self.transform_gpu = self.transform
             self.loaded_images = []
-            for idx in range(len(self.data_frame)):
+            ct = 0
+            for idx in tqdm(range(len(self.data_frame))):
                 sample = dict()
                 try:
                     img_name = self.data_frame.iloc[idx]["file_name"]
@@ -211,6 +216,7 @@ class ImageDataset(Dataset):
                 sample["label"] = label
                 sample["image_name"] = img_name
                 self.loaded_images.append(sample)
+                
 
     def __len__(self):
         return len(self.data_frame)

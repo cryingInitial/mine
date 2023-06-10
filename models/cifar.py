@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from collections import OrderedDict
 from utils.torch_utils import load_state_dict_from_url 
-from mmcv.cnn import build_norm_layer
+#from mmcv.cnn import build_norm_layer
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -76,6 +76,10 @@ class BasicBlock(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
                  base_width=64, dilation=1, norm_layer=None):
         super(BasicBlock, self).__init__()
+        # Save the pre-relu feature map for the attention module
+        self.return_prerelu = False
+        self.prerelu = None
+        
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         if groups != 1 or base_width != 64:
@@ -105,6 +109,8 @@ class BasicBlock(nn.Module):
             identity = self.downsample(x)
 
         out += identity
+        if self.return_prerelu:
+            self.prerelu = out
         out = self.relu(out)
 
         return out
@@ -122,6 +128,10 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
                  base_width=64, dilation=1, norm_layer=None):
         super(Bottleneck, self).__init__()
+        # Save the pre-relu feature map for the attention module
+        self.return_prerelu = False
+        self.prerelu = None
+        
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         width = int(planes * (base_width / 64.)) * groups
@@ -154,6 +164,8 @@ class Bottleneck(nn.Module):
             identity = self.downsample(x)
 
         out += identity
+        if self.return_prerelu:
+            self.prerelu = out.clone()
         out = self.relu(out)
 
         return out
@@ -186,6 +198,7 @@ class ResNet(nn.Module):
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
         super(ResNet, self).__init__()
+        self.return_prerelu = False
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
@@ -257,32 +270,48 @@ class ResNet(nn.Module):
                                 norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
-
-    def _forward_impl(self, x, get_feature):
+    
+    def set_return_prerelu(self, enable=True):
+        self.return_prerelu = enable
+        for c in self.modules():
+            if isinstance(c, BasicBlock) or isinstance(c, Bottleneck):
+                c.return_prerelu = enable
+                
+    def _forward_impl(self, x, get_feature=False, get_features=False):
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
+        if self.return_prerelu:
+            out0_pre = x.clone()
         x = self.relu(x)
-        x = self.maxpool(x)
+        out0 = self.maxpool(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        out1 = self.layer1(out0)
+        out2 = self.layer2(out1)
+        out3 = self.layer3(out2)
+        out4 = self.layer4(out3)
 
-        x = self.avgpool(x)
+        feature = self.avgpool(out4)
 
         # neck layer
         #x = self.neck(x)
 
-        x = torch.flatten(x, 1)
-        out = self.fc(x)
+        feature = torch.flatten(feature, 1)
+        out = self.fc(feature)
 
         if get_feature:
-            return out, x
+            return out, feature
+        elif get_features:
+            features = [
+                out0 if not self.return_prerelu else out0_pre,
+                out1 if not self.return_prerelu else self.layer1[-1].prerelu,
+                out2 if not self.return_prerelu else self.layer2[-1].prerelu,
+                out3 if not self.return_prerelu else self.layer3[-1].prerelu,
+                out4 if not self.return_prerelu else self.layer4[-1].prerelu,
+                ]
+            return out, features
         else:
             return out
 
-    def forward(self, x, get_feature=False):
-        return self._forward_impl(x, get_feature)
-
+    def forward(self, x, get_feature=False, get_features=False):
+        return self._forward_impl(x, get_feature, get_features)

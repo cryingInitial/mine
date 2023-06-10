@@ -529,7 +529,7 @@ def get_data_loader(opt_dict, dataset, pre_train=False):
     train_datalist, cls_dict, cls_addition = get_train_datalist(dataset, opt_dict["sigma"], opt_dict["repeat"], opt_dict["init_cls"], opt_dict["rnd_seed"])
 
     # for debugging!
-    # train_datalist = train_datalist[:2000]
+    train_datalist = train_datalist[:2000]
 
     exp_train_df = pd.DataFrame(train_datalist)
     exp_test_df = pd.DataFrame(test_datalist)
@@ -543,13 +543,13 @@ def get_data_loader(opt_dict, dataset, pre_train=False):
         #cls_list=exposed_classes, #cls_list none이면 알아서 label로 train
         data_dir=opt_dict["data_dir"]
     )
+    
     train_loader = DataLoader(
         train_dataset,
         shuffle=True,
         batch_size=batch_size,
         num_workers=opt_dict["n_worker"],
     )
-
     test_dataset = ImageDataset(
         exp_test_df,
         dataset=dataset,

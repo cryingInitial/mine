@@ -83,32 +83,40 @@ def worker_loop(index_queue, data_queue, data_dir, transform, transform_on_gpu=F
             r = index_queue.get(timeout=TIMEOUT)
         except queue.Empty:
             continue
-        data = dict()
-        images = []
-        labels = []
-        if len(r) > 0:
-            for sample in r:
-                if use_kornia:
-                    img_name = sample["file_name"]
-                    img_path = os.path.join(data_dir, img_name)
-                    image = PIL.Image.open(img_path).convert("RGB")
-                    images.append(preprocess(image))
-                elif transform_on_gpu:
-                    images.append(load_data(sample, data_dir, cpu_transform))
-                else:
-                    images.append(load_data(sample, data_dir, transform))
-                labels.append(sample["label"])
-            if transform_on_worker:
-                if use_kornia:
-                    images = kornia_randaug(torch.stack(images).to(device))
-                elif transform_on_gpu:
-                    images = transform(torch.stack(images).to(device))
+        try:
+            data = dict()
+            images = []
+            labels = []
+            
+            # twc
+            task_ids = []
+            if len(r) > 0:
+                for sample in r:
+                    if use_kornia:
+                        img_name = sample["file_name"]
+                        img_path = os.path.join(data_dir, img_name)
+                        image = PIL.Image.open(img_path).convert("RGB")
+                        images.append(preprocess(image))
+                    elif transform_on_gpu:
+                        images.append(load_data(sample, data_dir, cpu_transform))
+                    else:
+                        images.append(load_data(sample, data_dir, transform))
+                    labels.append(sample["label"])
+                    task_ids.append(sample["task_id"])
+                    
+                if transform_on_worker:
+                    if use_kornia:
+                        images = kornia_randaug(torch.stack(images).to(device))
+                    elif transform_on_gpu:
+                        images = transform(torch.stack(images).to(device))
+                    else:
+                        images = torch.stack(images)
                 else:
                     images = torch.stack(images)
+                data['image'] = images
+                data['label'] = torch.LongTensor(labels)
+                data['task_id'] = torch.LongTensor(task_ids)
+                data_queue.put(data)
             else:
-                images = torch.stack(images)
-            data['image'] = images
-            data['label'] = torch.LongTensor(labels)
-            data_queue.put(data)
-        else:
-            data_queue.put(None)
+                data_queue.put(None)
+        except: print('Error in worker loop')

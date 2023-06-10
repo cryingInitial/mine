@@ -1,3 +1,12 @@
+import os
+import sys
+# main.py의 상위 디렉토리 경로를 계산합니다.
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+
+# 상위 디렉토리를 sys.path에 추가합니다.
+sys.path.append(parent_dir)
+
 import torch
 import torch.nn as nn
 from models.layers import ConvBlock, InitialBlock, FinalBlock
@@ -10,6 +19,10 @@ class BasicBlock(nn.Module):
         self, opt, inplanes, planes, stride=1, downsample=None, groups=1, base_width=64
     ):
         super(BasicBlock, self).__init__()
+        # Save the pre-relu feature map for the attention module
+        self.return_prerelu = False
+        self.prerelu = None
+        
         if base_width != 64:
             raise ValueError("BasicBlock only supports groups=1 and base_width=64")
 
@@ -35,6 +48,8 @@ class BasicBlock(nn.Module):
         if self.downsample is not None:
             identity = self.downsample(x)
         out = out + identity
+        if self.return_prerelu:
+            self.prerelu = out
         out = self.relu(out)
         return out
 
@@ -52,6 +67,10 @@ class Bottleneck(nn.Module):
         self, opt, inplanes, planes, stride=1, downsample=None, groups=1, base_width=64
     ):
         super(Bottleneck, self).__init__()
+        # Save the pre-relu feature map for the attention module
+        self.return_prerelu = False
+        self.prerelu = None
+        
         width = int(planes * (base_width / 64.0)) * groups
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1block = ConvBlock(
@@ -87,6 +106,8 @@ class Bottleneck(nn.Module):
             identity = self.downsample(x)
 
         out = out + identity
+        if self.return_prerelu:
+            self.prerelu = out
         out = self.relu(out)
         return out
 
