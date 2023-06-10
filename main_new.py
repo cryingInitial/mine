@@ -51,7 +51,7 @@ def main():
     train_datalist, cls_dict, cls_addition = get_train_datalist(args.dataset, args.sigma, args.repeat, args.init_cls, args.rnd_seed)
     test_datalist = get_test_datalist(args.dataset)
     samples_cnt = 0
-
+    
     # Reduce datalist in Debug mode
     if args.debug:
         random.shuffle(train_datalist)
@@ -60,8 +60,9 @@ def main():
         test_datalist = test_datalist[:2000]
 
     logger.info(f"Select a CIL method ({args.mode})")
+    print(len(train_datalist)) 
+    
     method = select_method(args, train_datalist, test_datalist, device)
-
     print("\n###flops###\n")
     #method.get_flops_parameter()
 
@@ -69,11 +70,12 @@ def main():
 
     samples_cnt = 0
     task_id = 0
-
+    
+    
     for i, data in enumerate(train_datalist):
 
         # explicit task boundary for twf
-        if samples_cnt % args.samples_per_task == 0 and args.mode == "bic":
+        if samples_cnt % args.samples_per_task == 0 and (args.mode == "bic"):
             method.online_before_task(task_id)
             task_id += 1
 

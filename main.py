@@ -71,7 +71,7 @@ def main():
 
     logging.config.fileConfig("./configuration/logging.conf")
     logger = logging.getLogger()
-
+    
     os.makedirs(f"results/{args.dataset}/{args.note}", exist_ok=True)
     os.makedirs(f"tensorboard/{args.dataset}/{args.note}", exist_ok=True)
     fileHandler = logging.FileHandler(f'results/{args.dataset}/{args.note}/seed_{args.rnd_seed}.log', mode="w")
