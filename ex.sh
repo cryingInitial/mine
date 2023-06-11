@@ -2,7 +2,7 @@
 
 # CIL CONFIG
 NOTE="ewc_pre_trained_wo_cutmix_wo_neck_sigma10_cifar100_mem500_iter_3_modified" # Short description of the experiment. (WARNING: logs/results with the same note will be overwritten!)
-MODE="ewc"
+MODE="twf"
 K_COEFF="4"
 TEMPERATURE="0.125"
 TRANSFORM_ON_GPU="--transform_on_gpu"
@@ -32,6 +32,7 @@ if [ "$DATASET" == "cifar10" ]; then
     CANDIDATE_SIZE=50 VAL_SIZE=5
     MODEL_NAME="resnet18" VAL_PERIOD=500 EVAL_PERIOD=100
     BATCHSIZE=16; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
+    SAMPLES_PER_TASK=10000 N_TASKS=5
 
 elif [ "$DATASET" == "cifar100" ]; then
     MEM_SIZE=2000
@@ -39,6 +40,7 @@ elif [ "$DATASET" == "cifar100" ]; then
     CANDIDATE_SIZE=100 VAL_SIZE=2
     MODEL_NAME="resnet18" VAL_PERIOD=500 EVAL_PERIOD=100 
     BATCHSIZE=16; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
+    SAMPLES_PER_TASK=10000 N_TASKS=5
 
 elif [ "$DATASET" == "tinyimagenet" ]; then
     MEM_SIZE=100000
@@ -46,6 +48,7 @@ elif [ "$DATASET" == "tinyimagenet" ]; then
     CANDIDATE_SIZE=200 VAL_SIZE=2
     MODEL_NAME="resnet18" VAL_PERIOD=500 EVAL_PERIOD=200
     BATCHSIZE=32; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
+    SAMPLES_PER_TASK=20000 N_TASKS=5
 
 elif [ "$DATASET" == "imagenet" ]; then
     MEM_SIZE=1281167
@@ -53,6 +56,7 @@ elif [ "$DATASET" == "imagenet" ]; then
     CANDIDATE_SIZE=1000 VAL_SIZE=2
     MODEL_NAME="resnet18" EVAL_PERIOD=8000 F_PERIOD=200000
     BATCHSIZE=256; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=10
+    SAMPLES_PER_TASK=240000 N_TASKS=5
 
 else
     echo "Undefined setting"
@@ -61,9 +65,9 @@ fi
 
 for RND_SEED in $SEEDS
 do
-    CUDA_VISIBLE_DEVICES=5 nohup python main_new.py --mode $MODE \
+    CUDA_VISIBLE_DEVICES=0 nohup python main_new.py --mode $MODE \
     --dataset $DATASET --unfreeze_rate $UNFREEZE_RATE $USE_KORNIA --k_coeff $K_COEFF --temperature $TEMPERATURE \
-    --sigma $SIGMA --repeat $REPEAT --init_cls $INIT_CLS --samples_per_task 20000 \
+    --sigma $SIGMA --repeat $REPEAT --init_cls $INIT_CLS --n_tasks $N_TASKS --samples_per_task $SAMPLES_PER_TASK \
     --rnd_seed $RND_SEED --val_memory_size $VAL_SIZE --num_eval_class $NUM_EVAL_CLASS --num_class $NUM_CLASS \
     --model_name $MODEL_NAME --opt_name $OPT_NAME --sched_name $SCHED_NAME \
     --lr $LR --batchsize $BATCHSIZE --mir_cands $MIR_CANDS \

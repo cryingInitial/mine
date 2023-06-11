@@ -3,7 +3,7 @@
 # CIL CONFIG
 NOTE="twf_10_1_100" # Short description of the experiment. (WARNING: logs/results with the same note will be overwritten!)
 MODE="twf"
-DATASET="cifar10" # cifar10, cifar100, tinyimagenet, imagenet
+DATASET="cifar100" # cifar10, cifar100, tinyimagenet, imagenet
 SIGMA=10
 REPEAT=1
 INIT_CLS=100
@@ -25,6 +25,12 @@ if [ "$DATASET" == "cifar10" ]; then
 
 elif [ "$DATASET" == "cifar100" ]; then
     MEM_SIZE=2000 ONLINE_ITER=3
+    LAMBDA_FP_REPLAY=0.1
+    LAMBDA_FP=0.005
+    LAMBDA_DIVERSE_LOSS=0.1
+    DER_ALPHA=0.3
+    DER_BETA=0.9
+    SAMPLES_PER_TASK=10000
     MODEL_NAME="resnet34" EVAL_PERIOD=100
     BATCHSIZE=16; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
 
