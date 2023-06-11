@@ -37,8 +37,6 @@ class TWF(ER):
         self.min_resize_threshold = 16
         self.resize_maps = 0
         
-        self.cpt = 2
-        
         # Memory Switing
         # self.memory = TwFMemory(self.memory_size)
         self.initialize()
