@@ -9,27 +9,17 @@ REPEAT=1
 INIT_CLS=100
 GPU_TRANSFORM="--gpu_transform"
 USE_AMP="--use_amp"
-SEEDS="1"
+SEEDS="1 2 3"
 N_TASKS=5
 
 if [ "$DATASET" == "cifar10" ]; then
     MEM_SIZE=500 ONLINE_ITER=1
-    LAMBDA_FP_REPLAY=0.1
-    LAMBDA_FP=0.005
-    LAMBDA_DIVERSE_LOSS=0.1
-    DER_ALPHA=0.3
-    DER_BETA=0.9
     SAMPLES_PER_TASK=10000
     MODEL_NAME="resnet18" EVAL_PERIOD=100
     BATCHSIZE=16; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
 
 elif [ "$DATASET" == "cifar100" ]; then
     MEM_SIZE=2000 ONLINE_ITER=3
-    LAMBDA_FP_REPLAY=0.1
-    LAMBDA_FP=0.005
-    LAMBDA_DIVERSE_LOSS=0.1
-    DER_ALPHA=0.3
-    DER_BETA=0.9
     SAMPLES_PER_TASK=10000
     MODEL_NAME="resnet34" EVAL_PERIOD=100
     BATCHSIZE=16; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
@@ -51,14 +41,12 @@ fi
 
 for RND_SEED in $SEEDS
 do
-    CUDA_VISIBLE_DEVICES=1 python main_new.py --mode $MODE \
+    CUDA_VISIBLE_DEVICES=0 python main_new.py --mode $MODE \
     --dataset $DATASET \
     --sigma $SIGMA --repeat $REPEAT --init_cls $INIT_CLS\
     --rnd_seed $RND_SEED --samples_per_task $SAMPLES_PER_TASK \
     --model_name $MODEL_NAME --opt_name $OPT_NAME --sched_name $SCHED_NAME \
     --lr $LR --batchsize $BATCHSIZE --n_tasks $N_TASKS\
     --memory_size $MEM_SIZE $GPU_TRANSFORM --online_iter $ONLINE_ITER \
-    --lambda_fp_replay $LAMBDA_FP_REPLAY --lambda_diverse_loss $LAMBDA_DIVERSE_LOSS \
-    --lambda_fp $LAMBDA_FP --der_alpha $DER_ALPHA --der_beta $DER_BETA \
     --note $NOTE --eval_period $EVAL_PERIOD --imp_update_period $IMP_UPDATE_PERIOD $USE_AMP
 done

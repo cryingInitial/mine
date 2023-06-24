@@ -42,11 +42,11 @@ def base_parser():
     parser.add_argument("--resize_maps", type=int, choices=[0,1], default=0, help="")
 
     # 얘네는 default가 없음
-    parser.add_argument("--lambda_diverse_loss", type=float, default=0.1, help="")
-    parser.add_argument("--lambda_fp_replay", type=float, default=0.1, help="")
-    parser.add_argument("--lambda_fp", type=float, default=0.005, help="")
+    parser.add_argument("--lambda_diverse_loss", type=float, default=0.03, help="")
+    parser.add_argument("--lambda_fp_replay", type=float, default=1.5, help="")
+    parser.add_argument("--lambda_fp", type=float, default=0.3, help="")
     parser.add_argument("--der_alpha", type=float, default=0.3, help="")
-    parser.add_argument("--der_beta", type=float, default=0.9, help="")
+    parser.add_argument("--der_beta", type=float, default=1.2, help="")
 
     parser.add_argument("--rnd_seed", type=int, help="Random seed number.")
     parser.add_argument(

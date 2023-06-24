@@ -1,7 +1,7 @@
 #/bin/bash
 
 # CIL CONFIG
-NOTE="ewc_pre_trained_wo_cutmix_wo_neck_sigma10_cifar100_mem500_iter_3_modified" # Short description of the experiment. (WARNING: logs/results with the same note will be overwritten!)
+NOTE="twfnew_cifar100_trial1" # Short description of the experiment. (WARNING: logs/results with the same note will be overwritten!)
 MODE="twf"
 K_COEFF="4"
 TEMPERATURE="0.125"
