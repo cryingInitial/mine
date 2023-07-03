@@ -102,8 +102,9 @@ def worker_loop(index_queue, data_queue, data_dir, transform, transform_on_gpu=F
                     else:
                         images.append(load_data(sample, data_dir, transform))
                     labels.append(sample["label"])
-                    task_ids.append(sample["task_id"])
-                    
+                    if 'task_id' in sample:
+                        task_ids.append(sample["task_id"])
+                        
                 if transform_on_worker:
                     if use_kornia:
                         images = kornia_randaug(torch.stack(images).to(device))
@@ -115,7 +116,8 @@ def worker_loop(index_queue, data_queue, data_dir, transform, transform_on_gpu=F
                     images = torch.stack(images)
                 data['image'] = images
                 data['label'] = torch.LongTensor(labels)
-                data['task_id'] = torch.LongTensor(task_ids)
+                if len(task_ids) > 0:
+                    data['task_id'] = torch.LongTensor(task_ids)
                 data_queue.put(data)
             else:
                 data_queue.put(None)

@@ -38,7 +38,7 @@ fi
 
 for RND_SEED in $SEEDS
 do
-    CUDA_VISIBLE_DEVICES=6 nohup python main.py --mode $MODE --n_worker 8 \
+    CUDA_VISIBLE_DEVICES=6 python main_new.py --mode $MODE --n_worker 8 \
     --dataset $DATASET \
     --sigma $SIGMA --repeat $REPEAT --init_cls $INIT_CLS\
     --rnd_seed $RND_SEED \

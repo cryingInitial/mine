@@ -1,25 +1,25 @@
 #/bin/bash
 
 # CIL CONFIG
-NOTE="twfnew_cifar100_trial1" # Short description of the experiment. (WARNING: logs/results with the same note will be overwritten!)
-MODE="twf"
+NOTE="0703_ocs" # Short description of the experiment. (WARNING: logs/results with the same note will be overwritten!)
+MODE="ocs"
 K_COEFF="4"
 TEMPERATURE="0.125"
 TRANSFORM_ON_GPU="--transform_on_gpu"
 #TRANSFORM_ON_GPU=""
-N_WORKER=3
+N_WORKER=2
 FUTURE_STEPS=3
 EVAL_N_WORKER=3
 EVAL_BATCH_SIZE=1000
 #USE_KORNIA="--use_kornia"
 USE_KORNIA=""
 UNFREEZE_RATE=0.25
-SEEDS="1 2 3"
+SEEDS="1"
 
 
 DATASET="cifar100" # cifar10, cifar100, tinyimagenet, imagenet
 ONLINE_ITER=3
-SIGMA=10
+SIGMA=0
 REPEAT=1
 INIT_CLS=100
 USE_AMP="--use_amp"
@@ -31,16 +31,19 @@ if [ "$DATASET" == "cifar10" ]; then
     N_SMP_CLS="9" K="3" MIR_CANDS=50
     CANDIDATE_SIZE=50 VAL_SIZE=5
     MODEL_NAME="resnet18" VAL_PERIOD=500 EVAL_PERIOD=100
-    BATCHSIZE=16; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
-    SAMPLES_PER_TASK=10000 N_TASKS=5
+    BATCHSIZE=40; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
+    SAMPLES_PER_TASK=2500 N_TASKS=20
+    # debug
+    # SAMPLES_PER_TASK=40 N_TASKS=1250
 
 elif [ "$DATASET" == "cifar100" ]; then
-    MEM_SIZE=2000
+    MEM_SIZE=500
     N_SMP_CLS="2" K="3" MIR_CANDS=50
     CANDIDATE_SIZE=100 VAL_SIZE=2
     MODEL_NAME="resnet18" VAL_PERIOD=500 EVAL_PERIOD=100 
-    BATCHSIZE=16; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
+    BATCHSIZE=40; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
     SAMPLES_PER_TASK=10000 N_TASKS=5
+
 
 elif [ "$DATASET" == "tinyimagenet" ]; then
     MEM_SIZE=100000
@@ -62,6 +65,8 @@ else
     echo "Undefined setting"
     exit 1
 fi
+
+
 
 for RND_SEED in $SEEDS
 do

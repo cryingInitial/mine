@@ -16,7 +16,7 @@ from utils.method_manager_new import select_method
 
 def main():
     args = config.base_parser()
-
+    print(args.n_tasks)
     logging.config.fileConfig("./configuration/logging.conf")
     logger = logging.getLogger()
 
@@ -61,7 +61,17 @@ def main():
 
     logger.info(f"Select a CIL method ({args.mode})")
     print(len(train_datalist)) 
-    
+
+    if args.mode == 'ocs':
+        # redundant data since we pick half of the data for each iteration
+        new_train_datalist = []
+        for n_task in range(args.n_tasks):
+            new_train_datalist += train_datalist[n_task*args.samples_per_task:(n_task+1)*args.samples_per_task]
+            new_train_datalist += train_datalist[n_task*args.samples_per_task:(n_task+1)*args.samples_per_task]
+        
+        train_datalist = new_train_datalist
+        args.samples_per_task = args.samples_per_task * 2
+        
     method = select_method(args, train_datalist, test_datalist, device)
     print("\n###flops###\n")
     #method.get_flops_parameter()
@@ -71,11 +81,11 @@ def main():
     samples_cnt = 0
     task_id = 0
     
-    
+
     for i, data in enumerate(train_datalist):
 
         # explicit task boundary for twf
-        if samples_cnt % args.samples_per_task == 0 and (args.mode == "bic" or args.mode == "twf"):
+        if samples_cnt % args.samples_per_task == 0 and (args.mode == "bic" or args.mode == "twf" or args.mode == "ocs"):
             method.online_before_task(task_id)
             task_id += 1
 
@@ -83,7 +93,8 @@ def main():
         method.online_step(data, samples_cnt, args.n_worker)
         if samples_cnt % args.eval_period == 0:
             eval_dict = method.online_evaluate(test_datalist, samples_cnt, 512, args.n_worker, cls_dict,
-                                               cls_addition, data["time"])
+                                               cls_addition, 0)
+                                               # cls_addition, data["time"])
             eval_results["test_acc"].append(eval_dict['avg_acc'])
             #eval_results["percls_acc"].append(eval_dict['cls_acc'])
             eval_results["data_cnt"].append(samples_cnt)
@@ -93,7 +104,8 @@ def main():
 
     if eval_results["data_cnt"][-1] != samples_cnt:
         eval_dict = method.online_evaluate(test_datalist, samples_cnt, 512, args.n_worker, cls_dict, cls_addition,
-                                           data["time"])
+                                           0)
+                                           # data["time"])
 
     A_last = eval_dict['avg_acc']
 

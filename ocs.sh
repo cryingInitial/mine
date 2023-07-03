@@ -1,25 +1,26 @@
 #/bin/bash
 
 # CIL CONFIG
-NOTE="twf_10_1_100" # Short description of the experiment. (WARNING: logs/results with the same note will be overwritten!)
-MODE="twf"
-DATASET="cifar100" # cifar10, cifar100, tinyimagenet, imagenet
-SIGMA=10
+NOTE="ocs" # Short description of the experiment. (WARNING: logs/results with the same note will be overwritten!)
+MODE="ocs"
+DATASET="cifar10" # cifar10, cifar100, tinyimagenet, imagenet
+SIGMA=0
 REPEAT=1
 INIT_CLS=100
 GPU_TRANSFORM="--gpu_transform"
 USE_AMP="--use_amp"
-SEEDS="1 2 3"
-N_TASKS=5
+# SEEDS="1 2 3"
+SEEDS="1"
+N_TASKS=20
 
 if [ "$DATASET" == "cifar10" ]; then
     MEM_SIZE=500 ONLINE_ITER=1
     SAMPLES_PER_TASK=10000
     MODEL_NAME="resnet18" EVAL_PERIOD=100
-    BATCHSIZE=16; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
+    BATCHSIZE=40; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
 
 elif [ "$DATASET" == "cifar100" ]; then
-    MEM_SIZE=2000 ONLINE_ITER=3
+    MEM_SIZE=2000 ONLINE_ITER=1
     SAMPLES_PER_TASK=10000
     MODEL_NAME="resnet34" EVAL_PERIOD=100
     BATCHSIZE=16; LR=3e-4 OPT_NAME="adam" SCHED_NAME="default" IMP_UPDATE_PERIOD=1
@@ -39,9 +40,11 @@ else
     exit 1
 fi
 
+rm -f nohup.out
+
 for RND_SEED in $SEEDS
 do
-    CUDA_VISIBLE_DEVICES=4 python main_new.py --mode $MODE \
+    CUDA_VISIBLE_DEVICES=0 python main_new.py --mode $MODE \
     --dataset $DATASET \
     --sigma $SIGMA --repeat $REPEAT --init_cls $INIT_CLS\
     --rnd_seed $RND_SEED --samples_per_task $SAMPLES_PER_TASK \
